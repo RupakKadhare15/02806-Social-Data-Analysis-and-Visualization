@@ -7,7 +7,7 @@ The focus is on crime composition (percentages) across districts rather than tot
 ---
 
 ## Live Project
-https://rupakkadhare15.github.io/REPO-NAME/
+https://rupakkadhare15.github.io/02806-Social-Data-Analysis-and-Visualization/
 
 ---
 
@@ -18,19 +18,12 @@ https://rupakkadhare15.github.io/REPO-NAME/
 
 ---
 
-## Tech Stack
-- Python (Pandas, NumPy, Matplotlib)
-- Plotly
-- Leaflet
-- HTML/CSS
-
----
-
 ## Data Source
 San Francisco Police Department Incident Reports (SF Open Data)
 
 ---
 
-## Author
-Rupak Kadhare  
-Technical University of Denmark (DTU)
+## Authors
+Rupak Parmeshwar Kadhare  ( s252684@dtu.dk )
+
+Sandesh Oli  ( s250126@dtu.dk )
