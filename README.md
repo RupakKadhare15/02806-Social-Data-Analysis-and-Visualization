@@ -25,5 +25,7 @@ San Francisco Police Department Incident Reports (SF Open Data)
 
 ## Authors
 Rupak Parmeshwar Kadhare  ( s252684@dtu.dk )
+
 Sandesh Oli  ( s250126@dtu.dk )
+
 Matias Fernando Yuan ( s253008@dtu.dk )
