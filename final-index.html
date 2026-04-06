@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRIME REWIRED || SF Crime Data Story</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Nanum+Pen+Script&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: crosshair; }
+        
+        body, html {
+            background-color: #050505;
+            color: #b0b0b0;
+            font-family: 'Courier Prime', monospace;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* Film Grain */
+        body::before {
+            content: ""; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noise)" opacity="0.08"/%3E%3C/svg%3E');
+            animation: staticNoise 0.1s infinite;
+            z-index: 9999; pointer-events: none;
+        }
+        @keyframes staticNoise { 0% { transform: translate(0, 0); } 100% { transform: translate(-1%, -1%); } }
+
+        /* Vignette */
+        body::after {
+            content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            box-shadow: inset 0 0 200px rgba(0,0,0,1); z-index: 9998; pointer-events: none;
+        }
+
+        /* Scanline */
+        .scanline {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 2px;
+            background: rgba(255, 0, 60, 0.15); z-index: 9997; pointer-events: none;
+            animation: scanMove 4s linear infinite;
+        }
+        @keyframes scanMove { 0% { top: -2px; } 100% { top: 100vh; } }
+
+        /* Camera Flash */
+        #flash-bang {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #ffffff; z-index: 10000; opacity: 0; pointer-events: none;
+            transition: opacity 0.08s;
+        }
+
+        /* Progress Bar */
+        #progress-bar {
+            position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+            background: linear-gradient(90deg, #8b0000, #ff3333); z-index: 10001;
+            transition: width 0.1s;
+        }
+
+        /* Layout */
+        .archive-container {
+            max-width: 900px; margin: 0 auto; padding: 0 5vw 15vh 5vw; position: relative; z-index: 10;
+        }
+
+        header {
+            height: 100vh; display: flex; flex-direction: column; justify-content: center;
+            border-bottom: 2px dashed #333; position: relative;
+        }
+
+        .stamp {
+            font-family: 'Anton', sans-serif; font-size: clamp(4rem, 10vw, 7rem);
+            color: #dcdcdc; text-transform: uppercase; line-height: 0.9;
+            letter-spacing: 2px; transform: rotate(-2deg);
+        }
+
+        .tagline {
+            font-family: 'Courier Prime', monospace; font-size: 1.1rem;
+            color: #666; margin-top: 1.5rem; letter-spacing: 1px;
+            border-left: 3px solid #8b0000; padding-left: 15px;
+        }
+
+        .case-number { color: #555; font-size: 1.1rem; letter-spacing: 5px; margin-bottom: 1rem; }
+
+        .scroll-hint {
+            margin-top: 4rem; color: #444; font-size: 0.9rem;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+        /* Data Badge — for inline stats */
+        .data-badge {
+            display: inline; color: #ff6b6b; font-weight: bold;
+        }
+
+        /* Log Entries */
+        .log-entry { margin: 12vh 0 5vh 0; max-width: 700px; }
+        
+        .log-entry h2 {
+            font-family: 'Anton', sans-serif; font-size: 2.5rem; color: #444;
+            letter-spacing: 2px; margin-bottom: 1.5rem; text-transform: uppercase;
+        }
+
+        .log-entry p {
+            font-size: 1.1rem; line-height: 1.85; margin-bottom: 1.5rem;
+            min-height: 1.8em;
+        }
+
+        /* Dataset context — the required intro */
+        .dossier {
+            border: 1px dashed #333; padding: 20px 25px; margin: 10vh 0 8vh 0;
+            position: relative;
+        }
+        .dossier::before {
+            content: "DECLASSIFIED"; position: absolute; top: -10px; left: 15px;
+            background: #050505; padding: 0 8px; font-size: 1.25rem;
+            color: #8b0000; letter-spacing: 3px; font-weight: bold;
+        }
+        .dossier p { font-size: 0.95rem; line-height: 1.7; color: #888; margin-bottom: 0.8rem; }
+        .dossier p:last-child { margin-bottom: 0; }
+
+        /* Redacted Text */
+        .redacted {
+            background-color: #1a1a1a; color: #1a1a1a;
+            padding: 0 5px; transition: background-color 0.5s, color 0.5s;
+        }
+        .redacted:hover { background-color: transparent; color: #ff3333; }
+
+        /* Polaroids */
+        .polaroid {
+            width: 100%; padding: 15px; background: #eee;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,0.1);
+            position: relative; margin-bottom: 1vh; transform: rotate(1deg);
+            filter: blur(5px) sepia(100%) contrast(150%) brightness(0.1) hue-rotate(-50deg);
+            transition: filter 3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .polaroid.developed {
+            filter: blur(0px) sepia(0%) contrast(100%) brightness(1) hue-rotate(0deg);
+        }
+        .polaroid:nth-child(even) { transform: rotate(-1.5deg); }
+        .polaroid img, .polaroid iframe { width: 100%; height: 650px; border: none; background: #fff; display: block; }
+        
+        /* Proper captions — descriptive, not just labels */
+        .polaroid-caption {
+            margin-top: 1.5vh; margin-bottom: 8vh;
+            font-family: 'Nanum Pen Script', cursive;
+        }
+        .polaroid-caption .exhibit-label {
+            font-size: 1.6rem; color: #ccc; display: block;
+        }
+        .polaroid-caption .exhibit-desc {
+            font-size: 1.1rem; color: #999; display: block; margin-top: 2px;
+            font-family: 'Courier Prime', monospace; font-style: italic;
+        }
+
+        /* Critical Thinking / Caveat section */
+        .caveat {
+            border-left: 3px solid #8b0000; padding: 15px 20px; margin: 5vh 0;
+            background: rgba(139, 0, 0, 0.05);
+        }
+        .caveat h3 {
+            font-family: 'Anton', sans-serif; font-size: 1.2rem; color: #8b0000;
+            letter-spacing: 2px; margin-bottom: 0.8rem;
+        }
+        .caveat p { font-size: 1rem; line-height: 1.8; color: #999; }
+
+        /* References */
+        .references {
+            margin-top: 8vh; padding-top: 3vh; border-top: 1px dashed #333;
+        }
+        .references h3 {
+            font-size: 0.8rem; color: #555; letter-spacing: 3px; margin-bottom: 1rem;
+        }
+        .references a {
+            display: block; color: #666; font-size: 0.85rem; margin-bottom: 0.5rem;
+            text-decoration: none; transition: color 0.2s;
+        }
+        .references a:hover { color: #ff6b6b; }
+
+        /* UV Blacklight Layer */
+        #uv-layer {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none; z-index: 50;
+            -webkit-mask-image: radial-gradient(circle 200px at var(--x, -1000px) var(--y, -1000px), black 0%, transparent 80%);
+            mask-image: radial-gradient(circle 200px at var(--x, -1000px) var(--y, -1000px), black 0%, transparent 80%);
+            background-color: rgba(20, 0, 40, 0.6);
+            backdrop-filter: hue-rotate(90deg) contrast(150%);
+        }
+
+        .madness {
+            position: absolute; font-family: 'Nanum Pen Script', cursive;
+            color: #ff003c; font-size: 3rem; text-shadow: 0 0 10px rgba(255,0,60,0.8);
+            transform: rotate(-5deg); white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="progress-bar"></div>
+    <div id="flash-bang"></div>
+    <div class="scanline"></div>
+
+    <div id="uv-layer">
+        <div class="madness" style="top: 20vh; left: 3vw; font-size: 4rem;">LARCENY DOWN</div>
+        <div class="madness" style="top: 55vh; right: 3vw; transform: rotate(12deg);">VEHICLE THEFT</div>
+        <div class="madness" style="top: 120vh; left: 2vw; font-size: 3.5rem;">THE TENDERLOIN ABSORBED IT ALL.</div>
+        <div class="madness" style="top: 200vh; right: 2vw; transform: rotate(-18deg);">SIMILARITY TO 2019: 0.877.</div>
+        <div class="madness" style="top: 290vh; left: 2vw; font-size: 5rem; color: #00ffcc;">EVERY DISTRICT SHIFTED.</div>
+        <div class="madness" style="top: 380vh; right: 5vw; font-size: 3rem;">OR IS IT JUST ENFORCEMENT?</div>
+    </div>
+
+    <div class="archive-container">
+        
+        <header>
+            <div class="case-number">A DATA STORY BY RUPAK KADHARE, SANDESH & MATIAS</div>
+            <div class="stamp">CRIME</div>
+            <div class="stamp" style="color: #8b0000; margin-top: -20px;">REWIRED.</div>
+            <div class="tagline">The Dawn of a Post-COVID Crime Network in San Francisco.</div>
+            <div class="scroll-hint">> INITIALIZE DESCENT [SCROLL]</div>
+        </header>
+
+        <!-- REQUIRED: Dataset introduction for outside readers -->
+        <div class="dossier">
+            <p><strong style="color:#ccc;">INVESTIGATING OFFICERS:</strong> Rupak Kadhare, Sandesh, Matias</p>
+            <p><strong style="color:#ccc;">SOURCE:</strong> San Francisco Police Department Incident Reports, published through <a href="https://data.sfgov.org" target="_blank" style="color:#ff6b6b;">SF OpenData</a>. Two separate datasets — Historical (2003–May 2018) and Current (2018–Present) — were merged and cleaned into a single unified dataset with standardized crime categories.</p>
+            <p><strong style="color:#ccc;">SCALE:</strong> <span class="data-badge">1,732,611</span> individual crime reports spanning <span class="data-badge">22 years</span> (2003–2025), across <span class="data-badge">10 police districts</span> and <span class="data-badge">11 unified crime categories</span>: Larceny Theft, Vehicle Theft, Assault, Burglary, Vandalism, Drug Offense, Robbery, Fraud, Forgery/Counterfeiting, Arson, and Prostitution.</p>
+            <p><strong style="color:#ccc;">FIELDS PER RECORD:</strong> Crime type, incident date, time of day, day of week, GPS coordinates (latitude/longitude), and police district.</p>
+            <p><strong style="color:#ccc;">KEY CONCEPT — "CRIME DNA":</strong> Every district has a unique genetic makeup — the percentage breakdown of crime types within its borders. We call this its <em style="color:#ff6b6b;">Crime DNA</em>. Central District in 2019: 64% Larceny Theft, 10% Vandalism, 7% Assault, 6% Burglary, 4% Fraud, 3% Vehicle Theft, and smaller traces of the rest. These sequences were remarkably stable for over a decade — until a pandemic mutated them.</p>
+            <p><strong style="color:#ccc;">THE QUESTION:</strong> Did COVID-19 permanently rewrite San Francisco's Crime DNA — or did the old code restore itself when the city reopened?</p>
+        </div>
+
+        <section class="log-entry">
+            <h2>01. The Unbreakable Pattern</h2>
+            <p class="typewriter" data-text="For over a decade, San Francisco moved like clockwork, not a perfect machine, but a predictable one. Year after year, larceny ruled the streets, making up almost half of all reported crime by 2019. Vehicle theft stayed around 10%, assault at 11%, and the rest held their ground where the proportions barely shifted. We call this pattern the city's Crime DNA. The percentage share of each crime type relative to the whole."></p>
+            <p class="typewriter" data-text="Fig. 1 shows that DNA across 22 years. Each bar is one year, stacked to 100%. Viewing the stacked bar from left to right: for first seventeen years reveals the near-identical color bands. The blue band (larceny) contracts. Orange (vehicle theft) and green (vandalism) expand into the gap. The DNA mutated, and as the bars after 2020 show, it never mutated back."></p>
+        </section>
+
+        <div class="polaroid trigger-flash">
+            <img src="images/viz1_stacked_bar.png" alt="Stacked bar chart showing SF crime proportions 2003-2025">
+        </div>
+        <div class="polaroid-caption">
+            <span class="exhibit-label">Fig. 1: The Unbreakable Pattern</span>
+        </div>
+
+        <section class="log-entry">
+            <h2>02. Zooming Into District-Level DNA</h2>
+            <p class="typewriter" data-text="So far we've looked at the city as a whole. But, as we know San Francisco is a collection of ten districts, each with its own distinct Crime DNA.  The impact of COVID was not uniform, it reshaped each district's crime composition in distinct ways."></p>
+            <p class="typewriter" data-text="The Southern District, heavily influenced by office-worker foot traffic, saw its larceny share drop from 55% to 41%, a decline of about 14 percentage points. A similar shift is visible in the Tenderloin, where larceny decreased from around 40.4% to 27.3%."></p>
+            <p class="typewriter" data-text="The opposite pattern can be seen for Vehicle theft. In Bayview, its share increased from approximately 12% to 22%, while in Ingleside it rose from around 11% to 19%."></p>
+            <p class="typewriter" data-text="These shifts reflect behavioral changes during the pandemic: reduced foot traffic lowered theft opportunities, while prolonged inactivity exposed vehicles to theft. At the same time, certain offenses, such as drug-related crime, became more concentrated in districts like the Tenderloin."></p>
+            <p class="typewriter" data-text="This transformation was not a simple increase or decrease in crime, it was a geographically uneven redistribution of crime types across the city."></p>
+        </section>
+
+        <div class="polaroid trigger-flash">
+            <iframe src="Visualisation/viz2_ultimate_map.html" title="Interactive choropleth and heatmap comparison"></iframe>
+        </div>
+        <div class="polaroid-caption">
+            <span class="exhibit-label">Fig. 2: District-Level DNA</span>
+        </div>
+
+        <section class="log-entry">
+            <h2>03. The Shift That Never Reversed</h2>
+            <p class="typewriter" data-text="When San Francisco reopened in 2021, the expectation was straightforward, people return, routines return, crime patterns return. The three lines in Fig. 3 test that assumption. Blue is the old world (2017–19). Orange is the disruption (2020–21). Red is the new world (2022–24). If the Crime DNA had recovered, blue and red would sit on top of each other which they don't."></p>
+            <p class="typewriter" data-text="Looking at the Larceny Theft,  the city's dominant crime. The red line sits below blue across every single district. Southern dropped the most. Tenderloin and Northern follow close behind. Not one district recovered its pre-COVID larceny share. Vehicle Theft tells the mirror story — red sits above blue everywhere. Bayview leads the surge, but even quiet districts like Richmond and Taraval shows the gap. Then there's Drug Offense, there the lines are flat and low everywhere except one district, the Tenderloin. There, the red line shoots upward while every other district hugs the floor."></p>
+            <p class="typewriter" data-text="Only exception worth noting is that the Central District's larceny barely moved from 64% to 61%. The tourist corridor eventually recovered its foot traffic, but Central stands alone. Everywhere else, the red line settled into a permanently different position. The city reopened. The Crime DNA did not restore."></p>
+        </section>
+
+        <div class="polaroid trigger-flash">
+            <iframe src="Visualisation/viz3_line_chart.html" title="Line chart comparing pre, during, and post COVID crime shares"></iframe>
+        </div>
+        <div class="polaroid-caption">
+            <span class="exhibit-label">Fig. 3: The Shift That Never Reversed</span>
+        </div>
+
+        <!-- REQUIRED: Critical thinking paragraph -->
+        <div class="caveat">
+            <h3>// END NOTE</h3>
+            <p>COVID-19 did not simply disrupt crime levels but it also changed the underlying structure of how crime is distributed across San Francisco. For nearly two decades, the city exhibited a stable Crime DNA. The pandemic acted as a structural shock, breaking this stability and reshaping crime patterns across districts. Crucially, these changes did not revert after the city reopened because of which San Francisco did not return to its previous stability but it transitioned into a new one.</p>
+        </div>
+
+        <!-- REQUIRED: References -->
+        <div class="references">
+            <h3>SOURCES / CHAIN OF CUSTODY</h3>
+            <a href="https://data.sfgov.org/Public-Safety/Police-Department-Incident-Reports-2018-to-Present/wg3w-h783" target="_blank">[1] SF OpenData — Police Department Incident Reports, 2018–Present</a>
+            <a href="https://data.sfgov.org/Public-Safety/Police-Department-Incident-Reports-Historical-2003/tmnf-yvry" target="_blank">[2] SF OpenData — Police Department Incident Reports, Historical 2003–2018</a>
+        </div>
+
+        <div class="case-number" style="margin-top: 10vh; text-align: center;">> ARCHIVE SEALED.</div>
+
+    </div>
+
+    <script>
+        // --- PROGRESS BAR ---
+        window.addEventListener('scroll', () => {
+            const scrollTop = document.documentElement.scrollTop;
+            const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = (scrollTop / scrollHeight) * 100;
+            document.getElementById('progress-bar').style.width = progress + '%';
+        });
+
+        // --- UV BLACKLIGHT ---
+        const uvLayer = document.getElementById('uv-layer');
+        document.addEventListener('mousemove', (e) => {
+            uvLayer.style.setProperty('--x', e.clientX + 'px');
+            uvLayer.style.setProperty('--y', e.clientY + 'px');
+            document.querySelectorAll('.madness').forEach(text => {
+                const moveX = (e.clientX - window.innerWidth / 2) * 0.02;
+                const moveY = (e.clientY - window.innerHeight / 2) * 0.02;
+                text.style.transform = `translate(${moveX}px, ${moveY}px) rotate(-5deg)`;
+            });
+        });
+
+        // --- CAMERA FLASH & DARKROOM DEVELOPING ---
+        const flashBang = document.getElementById('flash-bang');
+        const flashObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    flashBang.style.opacity = '1';
+                    entry.target.classList.add('developed');
+                    setTimeout(() => { flashBang.style.opacity = '0'; }, 80);
+                    observer.unobserve(entry.target); 
+                }
+            });
+        }, { threshold: 0.4 });
+
+        document.querySelectorAll('.trigger-flash').forEach(frame => {
+            flashObserver.observe(frame);
+        });
+
+        // --- TYPEWRITER ---
+        const typeObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    typeWriter(entry.target);
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.7 });
+
+        document.querySelectorAll('.typewriter').forEach(el => {
+            typeObserver.observe(el);
+        });
+
+        function typeWriter(element) {
+            const htmlString = element.getAttribute('data-text');
+            element.innerHTML = '';
+            let i = 0, isTag = false, text = '';
+
+            function type() {
+                if (i < htmlString.length) {
+                    text += htmlString.charAt(i);
+                    element.innerHTML = text + '<span style="background:#b0b0b0;color:#050505;">_</span>';
+                    if (htmlString.charAt(i) === '<') isTag = true;
+                    if (htmlString.charAt(i) === '>') isTag = false;
+                    i++;
+                    setTimeout(type, isTag ? 0 : Math.random() * 25 + 8);
+                } else {
+                    element.innerHTML = text;
+                }
+            }
+            type();
+        }
+    </script>
+</body>
+</html>
